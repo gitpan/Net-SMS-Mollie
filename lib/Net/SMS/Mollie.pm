@@ -5,7 +5,7 @@ use Carp;
 use LWP::UserAgent;
 use XML::Simple;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 our (@ISA) = qw(Exporter);
 our (@EXPORT) = qw(send_sms);
 
@@ -178,6 +178,34 @@ sub send {
    }
    return $self->is_success;
 }
+
+sub credits {
+   my $self  = shift;
+   my $parms = {};
+
+   foreach(qw/username password/) {
+      $self->_croak("$_ must be defined!") unless(defined $self->{"_$_"});
+   }
+
+   $parms->{'gebruikersnaam'} = $self->{"_username"};
+   $parms->{'wachtwoord'}     = $self->{"_password"};
+
+   my $res = $self->{"_ua"}->post($self->{"_creditsurl"}, $parms);
+
+   if($res->is_success) {
+      if($res->decoded_content eq 'ERROR') {
+         $self->{"_resultcode"} = -2;
+         $self->{"_resultmessage"} = "Username or password incorrect";
+      } else {
+         return $res->decoded_content;
+      }
+   } else {
+      $self->{"_resultcode"} = -1;
+      $self->{"_resultmessage"} = $res->status_line;
+   }
+   return undef;
+}
+
 ####################################################################
 sub _init {
    my $self   = shift;
@@ -191,6 +219,7 @@ sub _init {
    my %options = (
       ua                => $ua,
       baseurl           => 'https://secure.mollie.nl/xml/sms/',
+      creditsurl        => 'http://www.mollie.nl/partners/api/smscredits/',
       gateway           => 1,
       originator        => 'Mollie',
       username          => undef,
@@ -383,6 +412,18 @@ set to C<-1>.
 =head2 resultmessage
 
 Returns the result message, as provided by mollie.nl, or L<LWP::UserAgent>.
+
+=head2 credits
+
+Requires both I<username> and I<password> to be set, and returns the 
+amount of remaining credits (with 4 decimals) or I<undef>:
+
+  if(my $credits = $mollie->credits) {
+     print $credits." credits left!\n";
+  } else {
+     print $mollie->resultmessage." (".
+           $mollie->resultcode.")\n";
+  }
 
 =head1 SEE ALSO
 

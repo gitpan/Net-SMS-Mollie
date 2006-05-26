@@ -5,4 +5,5 @@ Changes
 Makefile.PL
 lib/Net/SMS/Mollie.pm
 t/001_load.t
+t/002_not_too_useful.t
 META.yml                                 Module meta-data (added by MakeMaker)
