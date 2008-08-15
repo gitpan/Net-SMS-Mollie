@@ -5,7 +5,7 @@ use Carp;
 use LWP::UserAgent;
 use XML::Simple;
 
-our $VERSION = '0.02';
+our $VERSION = '0.04';
 our (@ISA) = qw(Exporter);
 our (@EXPORT) = qw(send_sms);
 
@@ -30,6 +30,12 @@ sub baseurl {
    my $self = shift;
    if (@_) { $self->{"_baseurl"} = shift }
    return $self->{"_baseurl"};
+}
+
+sub ua {
+   my $self = shift;
+   if (@_) { $self->{"_ua"} = shift }
+   return $self->{"_ua"};
 }
 
 sub gateway {
@@ -124,8 +130,14 @@ sub send {
    $self->message($message) if($message);
    my $parms = {};
 
+   # Wappush? We must have gateway 1 and an URL
+   if($self->type eq 'wappush') {
+      $self->gateway(1) ;
+      $self->_croak("No url specified.") unless($self->url);
+   }
+   
    #### Check for mandatory input
-   foreach(qw/username password gateway originator recipients message/) {
+   foreach(qw/username password gateway originator recipients message type/) {
       $self->_croak("$_ not specified.") unless(defined $self->{"_$_"});
       if($_ eq 'recipients') {
          $parms->{$_} = join(",", @{$self->{"_$_"}});
@@ -142,12 +154,6 @@ sub send {
    # Type can be normaal/wappush/vcard/flash/binary/long
    $self->_croak("Invalid type") 
       unless($self->type =~ /^(normaal|wappush|vcard|flash|binary|long)$/);
-
-   # Wappush? We must have gateway 1 and an URL
-   if($self->type eq 'wappush') {
-      $self->gateway(1) ;
-      $self->_croak("No url specified.") unless($self->url);
-   }
 
    # Append the additional arguments
    foreach(qw/deliverydate url udh/) {
@@ -273,7 +279,7 @@ Net::SMS::Mollie - Send SMS messages via the mollie.nl service
      print "Successfully sent message to ".$mollie->successcount." number(s)!";
   } else {
      print "Something went horribly wrong!\n".
-           "Error: ".$mollie->resultmessage." (".$mollie->resultcode.")".
+           "Error: ".$mollie->resultmessage." (".$mollie->resultcode.")";
   }
 
 or, if you like one liners:
